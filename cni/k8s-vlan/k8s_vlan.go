@@ -79,9 +79,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 func setupNetwork(result020s []*t020.Result, vlanIds []uint16, args *skel.CmdArgs) error {
 	if d.MacVlanMode() {
-		if err := setupMacvlan(result020s[0], vlanIds[0], args); err != nil {
-			return err
+		ifName := args.IfName
+		for i := range vlanIds {
+			args.IfName = fmt.Sprintf("eth%d", i)
+			if err := setupMacvlan(result020s[i], vlanIds[i], args); err != nil {
+				return err
+			}
 		}
+		args.IfName = ifName
 	} else if d.IPVlanMode() {
 		if err := setupIPVlan(result020s[0], vlanIds[0], args); err != nil {
 			return err
@@ -96,15 +101,20 @@ func setupNetwork(result020s []*t020.Result, vlanIds []uint16, args *skel.CmdArg
 	//send Gratuitous ARP to let switch knows IP floats onto this node
 	//ignore errors as we can't print logs and we do this as best as we can
 	if d.PureMode() {
-		_ = utils.SendGratuitousARP(d.Device, result020s[0].IP4.IP.IP.String(), "", d.GratuitousArpRequest)
+		for i := range vlanIds {
+			_ = utils.SendGratuitousARP(d.Device, result020s[i].IP4.IP.IP.String(), "", d.GratuitousArpRequest)
+		}
 	}
 	return nil
 }
 
 func setupMacvlan(result *t020.Result, vlanId uint16, args *skel.CmdArgs) error {
-	if err := d.MaybeCreateVlanDevice(vlanId); err != nil {
-		return err
+	if vlanId != 0 {
+		if err := d.MaybeCreateVlanDevice(vlanId); err != nil {
+			return err
+		}
 	}
+
 	if err := utils.MacVlanConnectsHostWithContainer(result, args, d.DeviceIndex, d.MTU); err != nil {
 		return err
 	}
