@@ -43,6 +43,11 @@ type VlanDriver struct {
 	vlanParentIndex int
 	// The device id of NetConf.Device or created vlan device
 	DeviceIndex int
+
+	// The device parent id list
+	vlanParentIndexList []int
+	// The device id list
+	DeviceIndexList []int
 }
 
 type NetConf struct {
@@ -107,7 +112,17 @@ func (d *VlanDriver) Init() error {
 		for _, devName := range d.Devices {
 			device, err = netlink.LinkByName(devName)
 			if err == nil {
-				break
+				// break
+				// only for macvlan
+				d.DeviceIndexList = append(d.DeviceIndexList, device.Attrs().Index)
+				if device.Type() == "vlan" {
+					d.vlanParentIndexList = append(d.vlanParentIndexList, device.Attrs().Index)
+				} else {
+					d.vlanParentIndexList = append(d.vlanParentIndexList, device.Attrs().ParentIndex)
+				}
+			} else {
+				// don't support candidate devices
+				return err
 			}
 		}
 	}

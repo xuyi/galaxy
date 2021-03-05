@@ -80,10 +80,21 @@ func cmdAdd(args *skel.CmdArgs) error {
 func setupNetwork(result020s []*t020.Result, vlanIds []uint16, args *skel.CmdArgs) error {
 	if d.MacVlanMode() {
 		ifName := args.IfName
+		deviceLength := len(d.DeviceIndexList)
+		if deviceLength > 1 && deviceLength != len(vlanIds) {
+			return fmt.Errorf("multi devices not equal multi ips")
+		}
+
 		for i := range vlanIds {
 			args.IfName = fmt.Sprintf("eth%d", i)
-			if err := setupMacvlan(result020s[i], vlanIds[i], args); err != nil {
-				return err
+			if deviceLength > 1 {
+				if err := setupMacvlan(result020s[i], vlanIds[i], args, d.DeviceIndexList[i]); err != nil {
+					return err
+				}
+			} else {
+				if err := setupMacvlan(result020s[i], vlanIds[i], args, d.DeviceIndex); err != nil {
+					return err
+				}
 			}
 		}
 		args.IfName = ifName
@@ -108,14 +119,14 @@ func setupNetwork(result020s []*t020.Result, vlanIds []uint16, args *skel.CmdArg
 	return nil
 }
 
-func setupMacvlan(result *t020.Result, vlanId uint16, args *skel.CmdArgs) error {
+func setupMacvlan(result *t020.Result, vlanId uint16, args *skel.CmdArgs, deviceIndex int) error {
 	if vlanId != 0 {
 		if err := d.MaybeCreateVlanDevice(vlanId); err != nil {
 			return err
 		}
 	}
 
-	if err := utils.MacVlanConnectsHostWithContainer(result, args, d.DeviceIndex, d.MTU); err != nil {
+	if err := utils.MacVlanConnectsHostWithContainer(result, args, deviceIndex, d.MTU); err != nil {
 		return err
 	}
 	_ = utils.SendGratuitousARP(args.IfName, result.IP4.IP.IP.String(), args.Netns, d.GratuitousArpRequest)
