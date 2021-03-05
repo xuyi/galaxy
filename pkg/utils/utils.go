@@ -371,7 +371,7 @@ func MacVlanConnectsHostWithContainer(result *t020.Result, args *skel.CmdArgs, p
 	macVlan := &netlink.Macvlan{
 		Mode: netlink.MACVLAN_MODE_BRIDGE,
 		LinkAttrs: netlink.LinkAttrs{
-			Name:        HostMacVlanName(fmt.Sprintf("%s-%s", args.ContainerID, args.IfName)),
+			Name:        HostMacVlanName(fmt.Sprintf("%s-%s", args.IfName, args.ContainerID)),
 			MTU:         mtu,
 			ParentIndex: parent,
 		}}
